@@ -1,5 +1,7 @@
+#include <chrono>
 #include <iostream>
 #include <random>
+#include <thread>
 
 #include "TrafficLight.h"
 
@@ -45,6 +47,7 @@ TrafficLightPhase TrafficLight::getCurrentPhase()
 void TrafficLight::simulate()
 {
     // FP.2b : Finally, the private method „cycleThroughPhases“ should be started in a thread when the public method „simulate“ is called. To do this, use the thread queue in the base class. 
+    threads.emplace_back(std::thread(&TrafficLight::cycleThroughPhases, this));
 }
 
 // virtual function which is executed in a thread
@@ -54,4 +57,28 @@ void TrafficLight::cycleThroughPhases()
     // and toggles the current phase of the traffic light between red and green and sends an update method 
     // to the message queue using move semantics. The cycle duration should be a random value between 4 and 6 seconds. 
     // Also, the while-loop should use std::this_thread::sleep_for to wait 1ms between two cycles. 
+
+    std::default_random_engine generator;
+    std::uniform_int_distribution<int> distribution(4000, 6000);
+    int cycle_duration = distribution(generator);
+    
+    auto start = std::chrono::system_clock::now();
+
+    while (true)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+        const auto end = std::chrono::system_clock::now();
+        const auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+        if (time_elapsed >= cycle_duration)
+        {
+            _currentPhase = _currentPhase == TrafficLightPhase::green ? TrafficLightPhase::red : TrafficLightPhase::green;
+            cycle_duration = distribution(generator);
+            std::unique_lock<std::mutex> lck(_mtx);
+            auto end_c = std::chrono::system_clock::to_time_t(end);
+            std::cout << "Traffic light switched to " << _currentPhase << " (" << std::ctime(&end_c) << ").\n";
+            start = std::chrono::system_clock::now();
+        }
+    }
 }
