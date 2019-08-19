@@ -75,7 +75,7 @@ void TrafficLight::cycleThroughPhases()
     // to the message queue using move semantics. The cycle duration should be a random value between 4 and 6 seconds. 
     // Also, the while-loop should use std::this_thread::sleep_for to wait 1ms between two cycles. 
 
-    std::default_random_engine generator;
+    std::default_random_engine generator(this->getID());
     std::uniform_int_distribution<int> distribution(4000, 6000);
     int cycle_duration = distribution(generator);
     
@@ -92,11 +92,10 @@ void TrafficLight::cycleThroughPhases()
         {
             _currentPhase = _currentPhase == TrafficLightPhase::green ? TrafficLightPhase::red : TrafficLightPhase::green;
             _queue.send(std::move(_currentPhase));
+            start = std::chrono::system_clock::now();
             cycle_duration = distribution(generator);
             std::unique_lock<std::mutex> lck(_mtx);
-            auto end_c = std::chrono::system_clock::to_time_t(end);
-            std::cout << "Traffic light switched to " << _currentPhase << " (" << std::ctime(&end_c) << ").\n";
-            start = std::chrono::system_clock::now();
+            std::cout << "Traffic light #" << getID() << " switched to " << _currentPhase << ".\n";
         }
     }
 }
